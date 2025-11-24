@@ -1,7 +1,5 @@
 const express = require('express')
 const cors = require('cors')
-const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
 const { Pool } = require('pg')
 
 const app = express()
@@ -14,11 +12,10 @@ const pool = new Pool({
 })
 
 // 登入 API
-app.post('/login', async (req, res) => {
+app.post('/login', (req, res) => {
   const { username, password } = req.body
   if (username === 'admin' && password === '123456') {
-    const token = jwt.sign({ userId: 1 }, 'secret')
-    res.json({ success: true, token })
+    res.json({ success: true })
   } else {
     res.json({ success: false })
   }
@@ -30,7 +27,6 @@ app.get('/products', async (req, res) => {
     const result = await pool.query('SELECT * FROM products')
     res.json(result.rows)
   } catch (err) {
-    // 模擬資料
     res.json([
       { id: 1, name: '無線藍牙耳機 Pro', cost: 850, price: 1880, stock: 8 },
       { id: 2, name: '304不鏽鋼保溫杯', cost: 320, price: 699, stock: 156 }
@@ -38,19 +34,25 @@ app.get('/products', async (req, res) => {
   }
 })
 
-// 訂單 API (模擬)
-app.get('/orders', (req, res) => {
-  res.json([
-    { id: 1, date: '2025-11-23', total: 12900, status: '已出貨' },
-    { id: 2, date: '2025-11-22', total: 25000, status: '待確認' }
-  ])
+// 訂單 API
+app.get('/orders', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM orders')
+    res.json(result.rows)
+  } catch (err) {
+    res.json([])
+  }
 })
 
-app.post('/orders', (req, res) => {
-  res.json({ success: true, id: 3 })
+app.post('/orders', async (req, res) => {
+  const { order_number, total, items } = req.body
+  try {
+    await pool.query('INSERT INTO orders (order_number, total, items) VALUES ($1, $2, $3)', [order_number, total, JSON.stringify(items)])
+    res.json({ success: true })
+  } catch (err) {
+    res.json({ success: false })
+  }
 })
 
 const PORT = process.env.PORT || 5000
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
